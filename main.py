@@ -22,7 +22,7 @@ def save_model(agent, episodes, best_reward, wins):
         'epsilon': agent.epsilon
     }, filename)
     
-    print(f"\Salvestatud: {filename}")
+    print("f\nSalvestatud: {filename}")
     return filename
 
 def train(episodes=1000):
@@ -62,10 +62,7 @@ def train(episodes=1000):
             recent_rewards.pop(0) #
         if terminated and total_reward >= env.rewards["win"]:
             wins += 1   
-        if total_reward >= env.rewards["win"]:
-            wins += 1
-            #järgmine samm + auhind kasvab (rohkem kommi :p)
-            
+
         agent.epsilon = max(agent.epsilon_min, agent.epsilon*agent.epsilon_decay) # mida rohkem õpib seda vähem kondab
         
         if episode % 10 == 0:

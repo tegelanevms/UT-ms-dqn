@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from collections import deque
-import random
+import random as py_random
 device = torch.device("cpu")
 
 class DQN(nn.Module):
@@ -48,7 +48,7 @@ class ReplayBuffer: #mälu lis, et saaks võtta suvalise testbatchi
         self.buffer.append((state, action, reward, next_state, done))
     
     def sample(self, batch_size):
-        batch = random.sample(self.buffer, batch_size)
+        batch = py_random.sample(self.buffer, batch_size)
         
         states, actions, rewards, next_states, dones = zip(*batch) #unzipimine pmst
         return(
@@ -88,10 +88,10 @@ class DQNAgent:
         #väga epsiloniahne taku
         #state on lis mis ta näeb
         #action_mask on need vabad/kinni ruudud
-        if random.random() < self.epsilon:
+        if py_random.random() < self.epsilon:
             #läheb suvaliselt uitama inshallah
             valid_actions = np.where(action_mask == 1)[0]
-            return random.choice(valid_actions)
+            return np.random.choice(valid_actions)
             #kui ta otsustab uitama minna leiab kõik kohad kus on avamata ruut ja valib lampi ühe
             
             #väike insta reels break tulis sisse teha im so lost
