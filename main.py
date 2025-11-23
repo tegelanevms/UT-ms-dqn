@@ -30,6 +30,7 @@ def train(episodes=1000):
     agent = DQNAgent(env)
     best_reward = -float('inf')  #parim skoor 
     wins = 0  #mitu võitu
+    recent_rewards = []  
     #hiljem salvestatud mudeli failinime jaoks
     
     for episode in range(episodes):
@@ -55,12 +56,13 @@ def train(episodes=1000):
             total_reward+= reward
             if total_reward > best_reward:
                 best_reward = total_reward
-            
+        recent_rewards.append(total_reward) #
+        if len(recent_rewards) > 50: #
+            recent_rewards.pop(0) #
         if terminated and total_reward >= env.rewards["win"]:
             wins += 1   
         if total_reward >= env.rewards["win"]:
             wins += 1
-            print(f"WIN DETECTED! Episode {episode}, Total reward: {total_reward}")  # ← ADD THIS
             #järgmine samm + auhind kasvab (rohkem kommi :p)
             
         agent.epsilon = max(agent.epsilon_min, agent.epsilon*agent.epsilon_decay) # mida rohkem õpib seda vähem kondab
@@ -71,7 +73,8 @@ def train(episodes=1000):
             
         if episode % 50 == 0:
             win_rate = wins / (episode + 1) * 100 
-            print(f"Episode {episode}, Reward: {total_reward:.2f}, Best: {best_reward:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
+            avg_recent = sum(recent_rewards) / len(recent_rewards)
+            print(f"Episode {episode}, Reward: {total_reward:.2f}, Best: {best_reward:.2f}, Avg50: {avg_recent:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
             #logging, aitab silma peal hoida sellel kui hästi läheb
     return agent, best_reward, wins
         
@@ -79,7 +82,7 @@ def train(episodes=1000):
 #pealtvaatamine :p
 
 if __name__ == "__main__":
-    episodes = 10000
+    episodes = 1000
     trained_agent, best_reward, wins = train(episodes=episodes)
     #save_model(trained_agent, episodes, best_reward, wins)
     filename = save_model(trained_agent, episodes, best_reward, wins)  
