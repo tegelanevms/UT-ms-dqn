@@ -76,7 +76,7 @@ def train(episodes=1000):
             win_rate = wins / (episode + 1) * 100 
             avg_recent = sum(recent_rewards) / len(recent_rewards)
             best50 = max(recent_rewards)
-            print(f"Episode {episode}, Reward: {total_reward:.2f}, Best50: {best50:.2f}, Avg50: {avg_recent:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
+            print(f"Episode {episode}, Best50: {best50:.2f}, Avg50: {avg_recent:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
             #logging, aitab silma peal hoida sellel kui hästi läheb
     return agent, best_reward, wins
         
