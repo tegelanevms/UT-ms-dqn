@@ -12,18 +12,20 @@ class DQN(nn.Module):
         #CNN-id vajalikud kuna ruumiline asukoht loeb minesweeperis vms
         self.conv = nn.Sequential(
             #2 input (cell + revealed mask), 32 output, 3x3 filter, padding hoiab lauasuuruse samaks?
-            nn.Conv2d(2, 32, kernel_size=3, padding=1),
+            nn.Conv2d(2, 64, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
             nn.ReLU()
         )
         
         # Fully connected layers
         self.fc = nn.Sequential(
-            nn.Linear(height * width * 64, 512), #lineaarsete kihtide jaoks peab conv-ist tulevad 4D tensorid lapikuks tegema vms, see rida surub kokku 512ks
+            nn.Linear(height * width * 128, 1024), #lineaarsete kihtide jaoks peab conv-ist tulevad 4D tensorid lapikuks tegema vms, see rida surub kokku 512ks
             nn.ReLU(), #paneb kihid omavahel tööle or sum shi
+            nn.Linear(1024, 512),
+            nn.ReLU(),
             nn.Linear(512, n_actions) #DQN-i jaosk need Q väärtused antud kihtidest
         )
     
@@ -71,7 +73,7 @@ class DQNAgent:
         self.target_net = DQN(env.height, env.width, env.action_space.n).to(device) #staatiline tagavara
         self.target_net.load_state_dict(self.policy_net.state_dict()) #pmst võtab need kalduvused mis policyl on targetile ehk ss alguses identsed
         
-        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.0001) #adam on mingi optimization asi et tegelane paremini õpiks
+        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.0005) #adam on mingi optimization asi et tegelane paremini õpiks
         #lr on learning rate e. kui suured muutused parameetritele tulevad iga kord kui adam kallale läheb
         
         #see osa goofballist mis suvaliselt ringi klõpsib

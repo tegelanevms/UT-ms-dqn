@@ -2,36 +2,84 @@ import gymnasium as gym
 from minesweeper_env_gymnasium import MinesweeperEnv
 import pygame
 from dqn import DQNAgent
+import torch
+from datetime import datetime
 
-"""
-env = MinesweeperEnv()
-env.reset()
-done = False
-while not done:
-    env.render()
+#env = MinesweeperEnv(height=8, width=8, num_mines=10)
+#agent = DQNAgent(env)
+
+def save_model(agent, episodes, best_reward, wins):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  #nt 20250123_143052
+    win_rate = (wins / episodes) * 100
+    filename = f"minesweeper_ep{episodes}_wr{win_rate:.0f}_best{best_reward:.0f}_{timestamp}.pth"
     
-    # Wait for any key press
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                waiting = False
-                print(env._get_obs())
-            if event.type == pygame.QUIT:
-                env.close()
-                exit()
+    torch.save({
+        'model_state': agent.policy_net.state_dict(),
+        'episodes': episodes,
+        'best_reward': best_reward,
+        'wins': wins,
+        'win_rate': win_rate,
+        'epsilon': agent.epsilon
+    }, filename)
     
-    action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
-    done = terminated or truncated
-    print(f"Reward: {reward}, Done: {done}")
-env.close() """
+    print(f"\Salvestatud: {filename}")
+    return filename
 
-
-def train():
+def train(episodes=1000):
     env = MinesweeperEnv(8, 8, 10)
     agent = DQNAgent(env)
-    # ... training loop
+    best_reward = -float('inf')  #parim skoor 
+    wins = 0  #mitu võitu
+    #hiljem salvestatud mudeli failinime jaoks
+    
+    for episode in range(episodes):
+        state, info = env.reset()
+        total_reward = 0
+        done = False
+
+        while not done:
+            action_mask = env.get_action_mask()
+            action = agent.select_action(state, action_mask) #annab ette seisu ja kinni/lahti ruudud
+            
+            next_state, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+                
+            #leiab uue seisu kui käik tehtud
+            agent.memory.push(state, action, reward, next_state, done)
+            #jätab meelde
+            
+            loss = agent.update(batch_size=32)
+            #õpib 32 kogemuse pealt ja saab teada kui vale ta ennustused on
+            
+            state = next_state
+            total_reward+= reward
+            if total_reward > best_reward:
+                best_reward = total_reward
+            
+        if terminated and total_reward >= env.rewards["win"]:
+            wins += 1   
+        if total_reward >= env.rewards["win"]:
+            wins += 1
+            print(f"WIN DETECTED! Episode {episode}, Total reward: {total_reward}")  # ← ADD THIS
+            #järgmine samm + auhind kasvab (rohkem kommi :p)
+            
+        agent.epsilon = max(agent.epsilon_min, agent.epsilon*agent.epsilon_decay) # mida rohkem õpib seda vähem kondab
+        
+        if episode % 10 == 0:
+            agent.target_net.load_state_dict(agent.policy_net.state_dict())
+            #iga 10 episoodi õpetab staatilisele mudelile, mida väiksem, seda ebastabiilsem, mida suurem, seda aegunum eesmärk
+            
+        if episode % 50 == 0:
+            win_rate = wins / (episode + 1) * 100 
+            print(f"Episode {episode}, Reward: {total_reward:.2f}, Best: {best_reward:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
+            #logging, aitab silma peal hoida sellel kui hästi läheb
+    return agent, best_reward, wins
+        
+
+#pealtvaatamine :p
 
 if __name__ == "__main__":
-    train()
+    episodes = 10000
+    trained_agent, best_reward, wins = train(episodes=episodes)
+    #save_model(trained_agent, episodes, best_reward, wins)
+    filename = save_model(trained_agent, episodes, best_reward, wins)  
