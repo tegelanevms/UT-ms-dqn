@@ -1,7 +1,7 @@
 import gymnasium as gym
 from minesweeper_env_gymnasium import MinesweeperEnv
 import pygame
-from dqn import mineqn
+from dqn import DQNAgent
 
 """
 env = MinesweeperEnv()
@@ -30,7 +30,7 @@ env.close() """
 
 def train():
     env = MinesweeperEnv(8, 8, 10)
-    agent = mineqn(env)
+    agent = DQNAgent(env)
     # ... training loop
 
 if __name__ == "__main__":
