@@ -71,8 +71,8 @@ def train(episodes=1000):
             
         if episode % 50 == 0:
             win_rate = wins / (episode + 1) * 100 
-            avg_recent = sum(recent_rewards) / len(recent_rewards)
-            best50 = max(recent_rewards)
+            avg_recent = (sum(recent_rewards) / len(recent_rewards))/env.rewards["safe"]
+            best50 = max(recent_rewards)/env.rewards["safe"]
             print(f"Episode {episode}, Best50: {best50:.2f}, Avg50: {avg_recent:.2f}, Win Rate: {win_rate:.1f}%, Epsilon: {agent.epsilon:.3f}")
             #logging, aitab silma peal hoida sellel kui hästi läheb
     return agent, best_reward, wins
@@ -81,7 +81,7 @@ def train(episodes=1000):
 #pealtvaatamine :p
 
 if __name__ == "__main__":
-    episodes = 5000
+    episodes = 1000
     trained_agent, best_reward, wins = train(episodes=episodes)
     #save_model(trained_agent, episodes, best_reward, wins)
     filename = save_model(trained_agent, episodes, best_reward, wins)  

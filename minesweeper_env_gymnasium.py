@@ -36,8 +36,8 @@ class MinesweeperEnv(gym.Env):
         self.width = width
         self.num_mines = num_mines
         self.rewards = {
-            "safe": 1,
-            "fail": -10,
+            "safe": 1.5,
+            "fail": -20,
             "win": 100,
             "invalid": -0.2
         }

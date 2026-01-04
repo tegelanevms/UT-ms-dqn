@@ -1,9 +1,14 @@
 import torch
+#vajab erilist torchi versiooni
+#pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.2
 import torch.nn as nn
 import numpy as np
 from collections import deque
 import random as py_random
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+if torch.cuda.is_available():
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
 
 class DQN(nn.Module):
     def __init__(self, height=8, width=8, n_actions=64):
@@ -78,11 +83,11 @@ class DQNAgent:
         
         #see osa goofballist mis suvaliselt ringi klõpsib
         self.epsilon = 1.0 #alustab 100% suvaliselt
-        self.epsilon_min = 0.01 #lõpetab locked in
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.005 #lõpetab locked in
+        self.epsilon_decay = 0.997
         # 1-epsilon peaks olema parim käik vist
         
-        self.memory = ReplayBuffer(capacity=10000)  
+        self.memory = ReplayBuffer(capacity=1000)  
         
     def select_action(self, state, action_mask):
         #väga epsiloniahne taku
