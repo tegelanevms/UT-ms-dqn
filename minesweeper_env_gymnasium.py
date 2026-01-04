@@ -21,7 +21,7 @@ class MinesweeperEnv(gym.Env):
     # ACTION MASKING
     #   get_action_mask() returns valid actions (only hidden cells)
 
-    def __init__(self, height=8, width=8, num_mines=10):
+    def __init__(self, height=6, width=6, num_mines=5):
         # Multi-channel observation: [cell_values, revealed_mask]
         self.observation_space = spaces.Box(
             low=-1, high=8, 
@@ -36,10 +36,10 @@ class MinesweeperEnv(gym.Env):
         self.width = width
         self.num_mines = num_mines
         self.rewards = {
-            "safe": 1.5,
-            "fail": -20,
+            "safe": 3,
+            "fail": -10,
             "win": 100,
-            "invalid": -0.2
+            "invalid": -1
         }
         
         self.map = np.array([[False]*width for _ in range(height)])
@@ -128,6 +128,7 @@ class MinesweeperEnv(gym.Env):
         # Hit a mine - terminated
         if self.map[x][y]:
             self.revealed_mask[x,y] = 1
+            self.state[x,y] = -2
             return self._get_obs(), self.rewards["fail"], True, False, info
         
         # Valid reveal
@@ -154,11 +155,18 @@ class MinesweeperEnv(gym.Env):
                 if num==-1:
                     pygame.draw.rect(self.screen, (255,255,255), rect, 1)
                 else:
-                    color = (250, 250-num*30, 250-num*30)
-                    pygame.draw.rect(self.screen, color, rect)
-                    text = self.font.get_rect(str(num))
-                    text.center = rect.center
-                    self.font.render_to(self.screen,text.topleft,str(num),(0,0,0))
+                    if num==-2:
+                        color = (250, 0, 0)
+                        pygame.draw.rect(self.screen, color, rect)
+                        text = self.font.get_rect("🧑‍🦯")
+                        text.center = rect.center
+                        self.font.render_to(self.screen, text.topleft, "🧑‍🦯", (255, 255, 255))
+                    else:
+                        color = (250, 250-num*30, 250-num*30)
+                        pygame.draw.rect(self.screen, color, rect)
+                        text = self.font.get_rect(str(num))
+                        text.center = rect.center
+                        self.font.render_to(self.screen,text.topleft,str(num),(0,0,0))
         pygame.display.update()
 
     def render(self, mode='human'):
@@ -171,11 +179,14 @@ class MinesweeperEnv(gym.Env):
         self.drawGrid()
 
     def _get_info(self):
+        cells_revealed = self.get_num_opened()
+        cells_total = self.height * self.width - self.num_mines
         return {
             "map": self.map,
             "action_mask": self.get_action_mask(),
             "cells_revealed": self.get_num_opened(),
-            "cells_remaining": self.height * self.width - self.num_mines - self.get_num_opened()
+            "cells_remaining": self.height * self.width - self.num_mines - self.get_num_opened(),
+            "won": cells_revealed == cells_total
         }
     
     def close(self):

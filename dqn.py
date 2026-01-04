@@ -1,14 +1,14 @@
+import torch_directml
 import torch
 #vajab erilist torchi versiooni
-#pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.2
+#pip install torch-directml
 import torch.nn as nn
 import numpy as np
 from collections import deque
 import random as py_random
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+device = torch_directml.device()
 print(f"Using device: {device}")
-if torch.cuda.is_available():
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
 
 class DQN(nn.Module):
     def __init__(self, height=8, width=8, n_actions=64):
@@ -78,16 +78,15 @@ class DQNAgent:
         self.target_net = DQN(env.height, env.width, env.action_space.n).to(device) #staatiline tagavara
         self.target_net.load_state_dict(self.policy_net.state_dict()) #pmst võtab need kalduvused mis policyl on targetile ehk ss alguses identsed
         
-        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.0005) #adam on mingi optimization asi et tegelane paremini õpiks
-        #lr on learning rate e. kui suured muutused parameetritele tulevad iga kord kui adam kallale läheb
+        self.optimizer = torch.optim.SGD(self.policy_net.parameters(), lr=0.0001, momentum=0.9)
         
         #see osa goofballist mis suvaliselt ringi klõpsib
         self.epsilon = 1.0 #alustab 100% suvaliselt
         self.epsilon_min = 0.005 #lõpetab locked in
-        self.epsilon_decay = 0.997
+        self.epsilon_decay = 0.995
         # 1-epsilon peaks olema parim käik vist
         
-        self.memory = ReplayBuffer(capacity=1000)  
+        self.memory = ReplayBuffer(capacity=50000)  
         
     def select_action(self, state, action_mask):
         #väga epsiloniahne taku
@@ -130,8 +129,9 @@ class DQNAgent:
         current_q = self.policy_net(states).gather(1, actions.unsqueeze(1)) #leiab iga kogemuse pealt selle sammu mis ta tegi
         
         with torch.no_grad():
-            next_q = self.target_net(next_states).max(1)[0] #leiab parimad väärtused järgmistele käikudele
-            target_q = rewards + (1 - dones) * self.gamma * next_q #kui on valma ss ei saa kommi järgmisel käigul :(
+            next_actions = self.policy_net(next_states).argmax(1, keepdim=True)
+            next_q = self.target_net(next_states).gather(1, next_actions).squeeze()
+            target_q = rewards + (1 - dones) * self.gamma * next_q
             #bellmani võrrand
             
             # Compute loss
@@ -140,6 +140,7 @@ class DQNAgent:
         
         self.optimizer.zero_grad() #eemaldab vanad gradiendid
         loss.backward() #uus gradient
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.optimizer.step() #uued kalduvused
         
         return loss.item()  
