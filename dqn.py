@@ -11,27 +11,30 @@ device = torch_directml.device()
 print(f"Using device: {device}")
 
 class DQN(nn.Module):
-    def __init__(self, height=8, width=8, n_actions=64):
+    def __init__(self, height=6, width=6, n_actions=36):
         super().__init__()
         #sequential et ta läbiks eri filtrid ühekaupa järjest?
         #CNN-id vajalikud kuna ruumiline asukoht loeb minesweeperis vms
         self.conv = nn.Sequential(
             #2 input (cell + revealed mask), 32 output, 3x3 filter, padding hoiab lauasuuruse samaks?
             nn.Conv2d(2, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(64, 32, kernel_size=3, padding=1),
             nn.ReLU()
         )
-        
+        flattened_size = height * width * 32
         # Fully connected layers
         self.fc = nn.Sequential(
-            nn.Linear(height * width * 128, 1024), #lineaarsete kihtide jaoks peab conv-ist tulevad 4D tensorid lapikuks tegema vms, see rida surub kokku 512ks
+            nn.Linear(flattened_size, 256),
             nn.ReLU(), #paneb kihid omavahel tööle or sum shi
-            nn.Linear(1024, 512),
+            nn.Dropout(0.1),
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(512, n_actions) #DQN-i jaosk need Q väärtused antud kihtidest
+            nn.Linear(128, n_actions) #DQN-i jaosk need Q väärtused antud kihtidest
         )
     
     def forward(self, x):
@@ -44,7 +47,7 @@ class DQN(nn.Module):
         
         
 class ReplayBuffer: #mälu lis, et saaks võtta suvalise testbatchi
-    def __init__(self, capacity=10000):
+    def __init__(self, capacity=5000000):
         #deque võtab esimese ära kui list täis saab
         self.buffer = deque(maxlen=capacity)
         
@@ -69,7 +72,7 @@ class ReplayBuffer: #mälu lis, et saaks võtta suvalise testbatchi
         return(len(self.buffer))
         
 class DQNAgent:
-    def __init__(self, env, lr=0.0001, gamma=0.99):
+    def __init__(self, env, lr=0.00025, gamma=0.99):
         self.env = env
         self.gamma = gamma #kui olulised on järgmised sammud
         
@@ -78,15 +81,15 @@ class DQNAgent:
         self.target_net = DQN(env.height, env.width, env.action_space.n).to(device) #staatiline tagavara
         self.target_net.load_state_dict(self.policy_net.state_dict()) #pmst võtab need kalduvused mis policyl on targetile ehk ss alguses identsed
         
-        self.optimizer = torch.optim.SGD(self.policy_net.parameters(), lr=0.0001, momentum=0.9)
+        self.optimizer = torch.optim.RMSprop(self.policy_net.parameters(), lr=1e-4) #ainus mis toimib directml asjaga
         
         #see osa goofballist mis suvaliselt ringi klõpsib
         self.epsilon = 1.0 #alustab 100% suvaliselt
-        self.epsilon_min = 0.005 #lõpetab locked in
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.01 #lõpetab locked in
+        self.epsilon_decay = 0.9995
         # 1-epsilon peaks olema parim käik vist
         
-        self.memory = ReplayBuffer(capacity=50000)  
+        self.memory = ReplayBuffer(capacity=5000000)  
         
     def select_action(self, state, action_mask):
         #väga epsiloniahne taku
@@ -117,7 +120,7 @@ class DQNAgent:
         if len(self.memory) < batch_size:
             return None
         
-        states, actions, rewards, next_states, dones = self.memory.sample(batch_size) #leiab 32 kogemust 
+        states, actions, rewards, next_states, dones = self.memory.sample(batch_size) #leiab n kogemust 
         
         states = torch.FloatTensor(states).to(device)
         actions = torch.LongTensor(actions).to(device)
